@@ -1,0 +1,11 @@
+[build]
+functions = "netlify/functions"
+publish = "." # የእርስዎ index.html እዚህ አለ
+command = "npm install" # Node.js ጥቅሎችን ለመጫን
+
+# Webhook Redirect: ቴሌግራም የሚልከው POST ጥያቄ ወደ Functionዎ ይሄዳል
+[[redirects]]
+  from = "/webhook"
+  to = "/.netlify/functions/tbot_handler"
+  status = 200
+  force = true
