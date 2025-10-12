@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School ላይብረሪ Shop</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
+    <style>
+        /* የስታይል ኮድ ሳይቀየር ይቀራል */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 10px;
+            padding-bottom: 70px; 
+            background-color: var(--tg-theme-bg-color, #f4f4f4);
+            color: var(--tg-theme-text-color, #333);
+        }
+        h1, h2, h3 {
+            color: var(--tg-theme-link-color, #007bff);
+            padding-bottom: 5px;
+            margin-top: 20px;
+        }
+        .hidden-page {
+            display: none !important;
+        }
+        
+        /* አዲስ ስታይል: በቅደም ተከተል የሚከፈቱ ክፍሎችን ለመደበቅ */
+        .hidden-section {
+            display: none !important;
+        }
+        
+        /* ********** የጋራ ስታይሎች ********** */
+        .info-card {
+            background-color: var(--tg-theme-secondary-bg-color, #ffffff);
+            margin: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--tg-theme-bg-color, #eee);
+        }
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        .green-button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .red-button { /* ለLogout */
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            width: 100%;
+        }
+
+        /* ********** Shop Page ስታይሎች ********** */
+        #cart-container {
+            border: 1px solid var(--tg-theme-link-color, #007bff);
+            background-color: var(--tg-theme-secondary-bg-color, #fff0f0);
+        }
+        .book-list li {
+            display: flex;
+            align-items: center;
+            background-color: var(--tg-theme-secondary-bg-color, #ffffff);
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .book-photo {
+            width: 80px;
+            height: 100px;
+            object-fit: cover;
+            margin-right: 15px;
+            border-radius: 4px;
+            background-color: #ccc; /* ምስል እስኪመጣ ድረስ */
+        }
+        
+        /* ********** Profile ስታይሎች ********** */
+        #profile-header {
+            display: flex;
+            align-items: center;
+            padding: 20px 15px;
+            background-color: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-bottom: 1px solid var(--tg-theme-bg-color, #eee);
+        }
+        .profile-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: var(--tg-theme-link-color, #007bff);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        .profile-username {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin: 0;
+            color: var(--tg-theme-text-color, #333);
+        }
+
+        /* ********** Tasks/Spin Wheel ስታይሎች ********** */
+        #wheelCanvas {
+            transition: transform 5s cubic-bezier(0.25, 0.1, 0.25, 1); 
+            background-color: var(--tg-theme-bg-color, #eee);
+            border-radius: 50%;
+        }
+        #pointer {
+            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; border-left: 10px solid transparent; 
+            border-right: 10px solid transparent; border-bottom: 20px solid #dc3545;
+        }
+        
+        /* ********** የታችኛው ዳሰሳ ስታይል (Bottom Nav) ********** */
+        #bottom-nav {
+            position: fixed; 
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            display: flex; 
+            justify-content: space-around; 
+            padding: 5px 0 10px 0; 
+            background-color: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-top: 1px solid var(--tg-theme-bg-color, #eee);
+            z-index: 100; 
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05); 
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            cursor: pointer;
+            color: var(--tg-theme-hint-color, #999);
+            font-size: 0.8em;
+            padding: 5px;
+            user-select: none;
+        }
+        .nav-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--tg-theme-bg-color, #f4f4f4);
+            margin-bottom: 2px;
+        }
+        .nav-item.active {
+            color: var(--tg-theme-link-color, #007bff); 
+        }
+        .nav-item.active .nav-icon {
+            background-color: var(--tg-theme-link-color, #007bff); 
+        }
+        .nav-item.active i {
+            color: var(--tg-theme-secondary-bg-color, #ffffff); 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="shop-page">
+        <div id="cart-container" class="info-card">
+            <h2>🛒 የሱቅ ማዕከል</h2>
+            <ul id="cart-items" style="list-style: none; padding: 0;"></ul>
+            <h3>ጠቅላላ ድምር: <span id="total-price">0.00</span> ብር</h3>
+        </div>
+        <div id="catalog"></div>
+    </div>
+    
+    <div id="profile-page" class="hidden-page" style="margin: -10px; padding: 0;">
+        <div id="profile-header">
+            <div class="profile-icon" id="profile-initial">?</div>
+            <p class="profile-username" id="display-username">Loading...</p>
+        </div>
+
+        <div class="info-card">
+            <div class="info-item">
+                <span class="item-label"><i class="fas fa-dollar-sign"></i> ቀሪ ሂሳብ (Balance)</span>
+                <span class="item-value">0.00 ብር</span> 
+                <button class="green-button" onclick="alert('ገንዘብ ማውጣት ተግባር በቦቱ መደገፍ አለበት።');">Withdraw</button>
+            </div>
+            <div class="info-item">
+                <span class="item-label"><i class="fas fa-star"></i> ሽልማት</span>
+                <span class="item-value" id="user-points">0</span> </div>
+             <div class="info-item">
+                <span class="item-label"><i class="fas fa-ticket-alt"></i> Tickets</span>
+                <span class="item-value">0</span>
+            </div>
+        </div>
+        
+         <div class="info-card">
+             <div class="info-item">
+                <span class="item-label"><i class="fas fa-wallet"></i> ክፍያ</span>
+                <button class="green-button" onclick="alert('የክፍያ ዘዴ ቅንብሮች');">የክፍያ ዘዴ ></button> 
+            </div>
+            
+            <div class="info-item">
+                <span class="item-label"><i class="fas fa-sync-alt"></i> ነጥብ ወደ ብር ቀይር</span>
+                <button class="green-button" onclick="alert('በቅርብ ቀን ይጠብቁ...');" style="background-color: #f0ad4e;">
+                    Exchange
+                </button> 
+            </div>
+            
+            <div class="info-item">
+                <span class="item-label"><i class="fas fa-globe"></i> ቋንቋ</span>
+                <span class="item-value">አማርኛ <i class="fas fa-chevron-down"></i></span>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <button class="red-button" onclick="tg.close();">ዝጋ</button>
+        </div>
+    </div>
+    
+    <div id="tasks-page" class="hidden-page" style="margin: -10px; padding: 0;">
+        <h2 style="text-align: center; color: var(--tg-theme-link-color);">⚡️ ዕለታዊ ተግባራት</h2>
+        
+        <div class="info-card" id="task-selection-card" style="display: flex; justify-content: space-around; padding: 15px;">
+            <button class="green-button" onclick="showTaskSection('spin-section');" style="width: 48%; padding: 12px; font-size: 1em;">
+                <i class="fas fa-magic"></i> ዕድልዎን ይሞክሩ (Spin)
+            </button>
+            <button class="green-button" onclick="showTaskSection('earning-section');" style="width: 48%; padding: 12px; font-size: 1em;">
+                <i class="fas fa-tasks"></i> ነጥብ ያግኙ (Tasks)
+            </button>
+        </div>
+        <div id="spin-section" class="info-card hidden-section" style="text-align: center; padding: 20px;">
+            <h3>🎁 የዛሬ ዕድልዎ! (Spin & Win)</h3>
+            <div style="position: relative; width: 300px; height: 300px; margin: 20px auto;">
+                <canvas id="wheelCanvas" width="300" height="300"></canvas>
+                <div id="pointer"></div>
+            </div>
+            <button id="spin-button" class="green-button" style="padding: 15px 30px; font-size: 1.2em; width: 80%;">
+                እሽክርክሩ!
+            </button>
+            <p style="margin-top: 15px;">ቀሪ ሙከራዎች: <span id="attempts-left">...</span></p>
+            <p id="timer-display" style="color: #dc3545; font-weight: bold; margin-top: 10px; display: none;">
+                ድጋሚ ለመጫወት: <span id="countdown">...</span>
+            </p>
+        </div>
+        <div id="earning-section" class="info-card hidden-section" style="margin-top: 25px;">
+            
+            <div class="info-card" id="daily-bonus-card" style="margin: 0 0 25px 0; padding: 10px 15px; background-color: var(--tg-theme-bg-color, #f4f4f4);">
+                 <h3 style="color: #17A2B8; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 0;">
+                    <i class="fas fa-calendar-check"></i> ዕለታዊ ሽልማት
+                </h3>
+                <div class="info-item" id="task-daily-claim" style="border-bottom: none;">
+                    <span class="item-label" style="font-weight: bold;">
+                        የዕለቱ ነፃ ጉርሻ!
+                    </span>
+                    <span class="item-value" style="color: #17A2B8;">+500 ነጥብ</span>
+                    <button class="green-button task-button" 
+                            id="daily-claim-button" 
+                            onclick="handleDailyClaim();" 
+                            style="background-color: #17A2B8;">
+                        ውሰድ!
+                    </button>
+                </div>
+            </div>
+            <h3 style="color: var(--tg-theme-link-color); border-bottom: 1px solid #ccc; padding-bottom: 5px;">🔥 የማህበራዊ Tasks</h3>
+            
+            <div class="info-item" id="task-tg-ch">
+                <span class="item-label">
+                    <i class="fab fa-telegram-plane" style="color: #0088cc; margin-right: 5px;"></i> 
+                    **ቴሌግራም ቻናል ተቀላቀል**
+                </span>
+                <span class="item-value">+150 ነጥብ</span>
+                <button class="green-button task-button" 
+                        data-task-id="TG_CH" 
+                        data-points="150"
+                        data-url="https://t.me/ethio_schoollibrary"
+                        onclick="handleTaskClick('TG_CH', 'https://t.me/ethio_schoollibrary');">
+                    ተቀላቀል!
+                </button>
+            </div>
+
+            <div class="info-item" id="task-tg-gp">
+                <span class="item-label">
+                    <i class="fab fa-telegram-plane" style="color: #00a4e4; margin-right: 5px;"></i> 
+                    **ቴሌግራም ግሩፕ ተቀላቀል**
+                </span>
+                <span class="item-value">+100 ነጥብ</span>
+                <button class="green-button task-button" 
+                        data-task-id="TG_GP" 
+                        data-points="100"
+                        data-url="https://t.me/school_library2012"
+                        onclick="handleTaskClick('TG_GP', 'https://t.me/school_library2012');">
+                    ተቀላቀል!
+                </button>
+            </div>
+
+            <div class="info-item" id="task-yt-sub" style="border-bottom: none;">
+                <span class="item-label">
+                    <i class="fab fa-youtube" style="color: #ff0000; margin-right: 5px;"></i> 
+                    **ዩቲዩብ ሰብስክራይብ**
+                </span>
+                <span class="item-value">+300 ነጥብ</span>
+                <button class="green-button task-button" 
+                        data-task-id="YT_SUB" 
+                        data-points="300"
+                        data-url="YOUR_YOUTUBE_CHANNEL_LINK_HERE"
+                        onclick="handleTaskClick('YT_SUB', 'YOUR_YOUTUBE_CHANNEL_LINK_HERE');">
+                    ሰብስክራይብ
+                </button>
+            </div>
+            
+            </div> 
+
+        <div id="quiz-section" class="info-card" style="margin-top: 15px;">
+            <h3 style="border-bottom: 1px solid #ccc; padding-bottom: 5px;">📖 የእለቱ የጭንቅላት ጥያቄ</h3>
+            <button class="green-button" onclick="alert('በቅርብ ቀን ይጠብቁ ...');" style="width: 100%;">ዕውቀትዎን ይሞክሩ (+50 ነጥብ)</button>
+        </div>
+        </div>
+    
+    <div id="top-page" class="hidden-page">
+        <h2 style="text-align: center; color: var(--tg-theme-link-color);">🏆 የላቀ ደረጃ</h2>
+        
+        <div class="info-card">
+            <h3 style="color: #FFC107;"><i class="fas fa-medal"></i> የሳምንቱ ምርጥ ነጥብ አሰባሳቢዎች</h3>
+            
+            <div id="leaderboard-points">
+                <div class="info-item">
+                    <span class="item-label" style="font-weight: bold; color: #FFC107;">🥇 1. Abel (አንተ)</span>
+                    <span class="item-value">3,500 ነጥብ</span>
+                </div>
+                <div class="info-item">
+                    <span class="item-label">🥈 2. Bethlehem</span>
+                    <span class="item-value">3,200 ነጥብ</span>
+                </div>
+                 <div class="info-item">
+                    <span class="item-label">🥉 3. Kaleb.T</span>
+                    <span class="item-value">2,950 ነጥብ</span>
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="info-card">
+            <h3 style="color: #4CAF50;"><i class="fas fa-shopping-cart"></i> Top ገዢዎች (በወር)</h3>
+            <div id="leaderboard-purchases">
+                 <div class="info-item">
+                    <span class="item-label">1. Selam.A</span>
+                    <span class="item-value">12,500 ብር</span>
+                </div>
+                 <div class="info-item">
+                    <span class="item-label">2. Yonas.M</span>
+                    <span class="item-value">8,100 ብር</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-card" style="text-align: center;">
+            <p>የእርስዎ ደረጃ: **175ኛ**</p>
+            <p style="font-size: 0.9em; color: var(--tg-theme-hint-color);">ለመወዳደር ጌሞችን ይጫወቱ ወይም መጽሐፍ ይግዙ!</p>
+        </div>
+    </div>
+    
+    <div id="bottom-nav">
+        <div class="nav-item" onclick="switchPage('tasks');">
+            <div class="nav-icon"><i class="fas fa-bolt"></i></div>
+            Tasks
+        </div>
+        <div id="shop-nav" class="nav-item active" onclick="switchPage('shop');">
+            <div class="nav-icon"><i class="fas fa-shopping-bag"></i></div>
+            Shop
+        </div>
+        <div class="nav-item" onclick="switchPage('top');">
+            <div class="nav-icon"><i class="fas fa-crown"></i></div>
+            Top
+        </div>
+        <div id="profile-nav" class="nav-item" onclick="switchPage('profile');">
+            <div class="nav-icon"><i class="fas fa-user"></i></div>
+            Profile
+        </div>
+    </div>
+    
+
+    <script>
+        // 1. የቴሌግራም ዌብ አፕ ዋና ነገር
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        
+        // 2. የካታሎግ መረጃ መዋቅር (Data)
+        const bookData = [
+            // ... bookData ሳይቀየር ይቀራል ...
+            {
+                category: "ሳይንስ",
+                items: [
+                    { id: "S001", name: "የሥነ-ሕይወት መሠረቶች", price: 150.00, pdf_id: "PDF_SC01", photo_url: "https://via.placeholder.com/80x100?text=S001" },
+                    { id: "S002", name: "የፊዚክስ ትምህርት", price: 175.50, pdf_id: "PDF_SC02", photo_url: "https://via.placeholder.com/80x100?text=S002" },
+                ]
+            },
+            {
+                category: "ሥነ ጽሑፍ",
+                items: [
+                    { id: "L001", name: "የሀገር ፍቅር ግጥሞች", price: 120.00, pdf_id: "PDF_LIT1", photo_url: "https://via.placeholder.com/80x100?text=L001" },
+                    { id: "L002", name: "አጫጭር ታሪኮች", price: 110.00, pdf_id: "PDF_LIT2", photo_url: "https://via.placeholder.com/80x100?text=L002" },
+                ]
+            },
+            // ... የተቀረው bookData
+        ];
+
+        let cart = [];
+        let totalPrice = 0;
+        
+        // ********** ከ Backend የሚመጡ ተለዋዋጮች (በቦቱ ዳታቤዝ ላይ የተቀመጡ) **********
+        // እነዚህ ተለዋዋጮች Frontend ላይ የሚቀመጡት የ Backend መረጃን ለማሳየት ብቻ ነው።
+        let currentPoints = 0; 
+        let spinAttempts = 0; 
+        let spinResetTime = 0;
+        let socialTasksStatus = {}; 
+        let dailyClaimTime = 0;
+        const DAILY_RESET_MS = 24 * 60 * 60 * 1000;
+        let timerInterval = null;
+        
+        // ************************************************************************
+
+
+        // ********** የመነሻ ዳታ መጫን (ቦቱ ሲጀምር የሚልከው) **********
+        function loadInitialData() {
+            // Frontend መጀመሩን ለ Backend ማሳወቅ እና ዳታውን መጠየቅ
+            tg.sendData(JSON.stringify({ 
+                action: "request_initial_data",
+                user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "UNKNOWN"
+            }));
+            
+            // የፕሌይስሆልደር ዳታ (ለማሳያነት)
+            updatePointsDisplay(0);
+            updateSpinDisplay(); 
+        }
+
+        // ********** የጋራ እና የፕሮፋይል ተግባራት **********
+        function initializeProfile() {
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                const user = tg.initDataUnsafe.user;
+                const username = user.username || (user.first_name + " " + (user.last_name || "")).trim();
+                document.getElementById('display-username').textContent = username;
+                document.getElementById('profile-initial').textContent = username.charAt(0).toUpperCase();
+            }
+            // ነጥቡን ከ currentPoints ማሳየት
+            updatePointsDisplay(currentPoints);
+        }
+
+        // ********** የገጽ መቀየሪያ ተግባር (Switch Page Logic) **********
+        function switchPage(pageName) {
+            // ... (የገጽ መቀየሪያ ኮድ ሳይቀየር ይቀራል)
+            const pages = ['shop-page', 'profile-page', 'tasks-page', 'top-page'];
+            const navItems = document.querySelectorAll('#bottom-nav .nav-item');
+            
+            // ሁሉንም ገጾች ደብቅ
+            pages.forEach(id => {
+                const pageElement = document.getElementById(id);
+                if (pageElement) {
+                    pageElement.classList.add('hidden-page');
+                }
+            });
+            
+            // የተመረጠውን ገጽ አሳይ
+            const selectedPageId = `${pageName}-page`;
+            const selectedPageElement = document.getElementById(selectedPageId);
+            if (selectedPageElement) {
+                selectedPageElement.classList.remove('hidden-page');
+            }
+
+            // የዳሰሳ አዝራሮችን ሁኔታ አስተካክል
+            navItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.onclick.toString().includes(`'${pageName}'`)) {
+                    item.classList.add('active');
+                }
+            });
+
+            if (pageName === 'shop') {
+                updateCartDisplay();
+            } else {
+                tg.MainButton.hide();
+            }
+            
+            // 💡 ተስተካክሏል: Tasks ገጽ ሲከፈት Spin እና Earning ዝርዝሮች ብቻ እንዲደበቁ ያደርጋል
+            if (pageName === 'tasks') {
+                document.getElementById('spin-section').classList.add('hidden-section');
+                document.getElementById('earning-section').classList.add('hidden-section');
+            }
+            
+             if (pageName === 'profile') {
+                initializeProfile(); 
+            }
+        }
+
+        // ********** የካታሎግ ስእል (Render Catalog Logic) **********
+        function renderCatalog() {
+            const catalogDiv = document.getElementById('catalog');
+            catalogDiv.innerHTML = ''; 
+            
+            bookData.forEach(categoryData => {
+                const h2 = document.createElement('h2');
+                h2.textContent = categoryData.category;
+                catalogDiv.appendChild(h2);
+                
+                const ul = document.createElement('ul');
+                ul.className = 'book-list';
+                ul.style.listStyle = 'none';
+                ul.style.padding = '0';
+                
+                categoryData.items.forEach(book => {
+                    const li = document.createElement('li');
+                    
+                    const img = document.createElement('img');
+                    img.className = 'book-photo';
+                    img.src = book.photo_url || `https://via.placeholder.com/80x100?text=${book.id}`; 
+                    img.alt = book.name;
+                    li.appendChild(img);
+                    
+                    const infoDiv = document.createElement('div');
+                    infoDiv.style.flexGrow = '1';
+                    
+                    const nameP = document.createElement('p');
+                    nameP.textContent = book.name;
+                    nameP.style.fontWeight = 'bold';
+                    nameP.style.margin = '0 0 5px 0';
+                    infoDiv.appendChild(nameP);
+                    
+                    const priceP = document.createElement('p');
+                    priceP.textContent = `${book.price.toFixed(2)} ብር`;
+                    priceP.style.color = 'var(--tg-theme-link-color)';
+                    priceP.style.margin = '0';
+                    infoDiv.appendChild(priceP);
+                    
+                    li.appendChild(infoDiv);
+                    
+                    const addButton = document.createElement('button');
+                    addButton.className = 'green-button';
+                    addButton.textContent = `+ ጨምር`; 
+                    addButton.onclick = () => addToCart(book.id, book.name, book.price);
+                    li.appendChild(addButton);
+                    
+                    ul.appendChild(li);
+                });
+                
+                catalogDiv.appendChild(ul);
+            });
+        }
+
+
+        // ********** የጋሪ እና ክፍያ ተግባራት (Shop Logic) **********
+        function addToCart(itemId, itemName, itemPrice) {
+            const item = cart.find(i => i.id === itemId);
+            if (item) {
+                item.quantity += 1; 
+            } else {
+                cart.push({ id: itemId, name: itemName, price: itemPrice, quantity: 1 });
+            }
+            totalPrice += itemPrice;
+            updateCartDisplay();
+        }
+        
+        function decreaseQuantity(itemId) {
+            const itemIndex = cart.findIndex(i => i.id === itemId);
+            if (itemIndex > -1) {
+                const item = cart[itemIndex];
+                totalPrice = Math.max(0, totalPrice - item.price);
+                item.quantity -= 1; 
+                if (item.quantity <= 0) {
+                    cart.splice(itemIndex, 1); 
+                }
+                updateCartDisplay(); 
+            }
+        }
+        
+        function updateCartDisplay() {
+            // ... (updateCartDisplay ሳይቀየር ይቀራል)
+            const cartList = document.getElementById('cart-items');
+            cartList.innerHTML = ''; 
+            
+            cart.forEach(item => {
+                const li = document.createElement('li');
+                li.style.display = 'flex';
+                li.style.justifyContent = 'space-between';
+                li.style.alignItems = 'center';
+
+                const itemText = document.createElement('span');
+                itemText.textContent = `${item.name} (${item.quantity}) - ${ (item.price * item.quantity).toFixed(2) } ብር`;
+                li.appendChild(itemText);
+                
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'ይሰረዙ';
+                removeButton.style.backgroundColor = 'red';
+                removeButton.style.border = 'none';
+                removeButton.style.color = 'white';
+                removeButton.style.padding = '5px 10px';
+                removeButton.style.borderRadius = '8px';
+                removeButton.style.marginLeft = '10px';
+                removeButton.onclick = () => decreaseQuantity(item.id);
+                li.appendChild(removeButton);
+                
+                cartList.appendChild(li);
+            });
+            
+            document.getElementById('total-price').textContent = totalPrice.toFixed(2);
+            
+            if (totalPrice > 0 && !document.getElementById('shop-page').classList.contains('hidden-page')) {
+                tg.MainButton.setText(`ክፍያ ይፈጽሙ: ${totalPrice.toFixed(2)} ብር`).show();
+                tg.MainButton.enable(); 
+            } else {
+                tg.MainButton.hide();
+            }
+        }
+        
+        // **** የክፍያ ጥያቄ ወደ Backend የሚላክበት ተግባር ****
+        tg.MainButton.onClick(() => {
+            if (cart.length === 0) return;
+            
+            const user_id = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "UNKNOWN";
+
+            tg.MainButton.setText("ክፍያ በማመንጨት ላይ...").disable();
+            
+            // የክፍያ ዳታ ወደ Backend በመላክ የዋጋ ድጋሚ ማረጋገጥ ይጠበቃል
+            const paymentDetails = {
+                action: "initiate_telebirr_payment", 
+                total: totalPrice.toFixed(2),
+                user_id: user_id,
+                cart_items: cart.map(item => ({ 
+                    id: item.id, 
+                    qty: item.quantity, 
+                    pdf_id: bookData.flatMap(c => c.items).find(i => i.id === item.id)?.pdf_id || "PDF_MISSING"
+                }))
+            };
+            
+            tg.sendData(JSON.stringify(paymentDetails));
+
+            tg.showAlert("የክፍያ ጥያቄ ልኬያለሁ። እባክዎ በቦቱ ውስጥ የሚመጣውን መልዕክት ይጠብቁ።");
+        });
+        // *************************************************************
+
+        // ********** Spin and Win ጌም አመክንዮ **********
+        const prizes = [
+            { text: "50 ነጥብ", color: "#FFC107", value: 50 },
+            // ... (የተቀሩት ሽልማቶች ሳይቀየር ይቀራል)
+            { text: "100 ነጥብ", color: "#4CAF50", value: 100 },
+            { text: "150 ነጥብ", color: "#2196F3", value: 150 },
+            { text: "200 ነጥብ", color: "#E91E63", value: 200 },
+            { text: "250 ነጥብ", color: "#9C27B0", value: 250 },
+            { text: "500 ነጥብ", color: "#FF5722", value: 500 },
+            { text: "ባዶ", color: "#F44336", value: 0 }, 
+        ];
+        
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const spinButton = document.getElementById('spin-button');
+        const attemptsLeftSpan = document.getElementById('attempts-left');
+        const countdownSpan = document.getElementById('countdown');
+        const timerDisplay = document.getElementById('timer-display');
+
+        // 💡 አሁን የሚገኘው የተስተካከለ function updateSpinDisplay()
+        function updateSpinDisplay() {
+            attemptsLeftSpan.textContent = spinAttempts;
+            
+            if (spinAttempts > 0) {
+                spinButton.disabled = false;
+                spinButton.textContent = "አሽክርክሩ!";
+                timerDisplay.style.display = 'none';
+                clearInterval(timerInterval); 
+            } else {
+                spinButton.disabled = true;
+                spinButton.textContent = "ይጠብቁ...";
+
+                // 💡 አዲስ ማስተካከያ: ሙከራዎች ከሌሉ ሁልጊዜ ሰዓቱን አሳይ (display: block)
+                timerDisplay.style.display = 'block'; 
+                
+                if (spinResetTime > 0) { 
+                     // ትክክለኛ ባታ ካለ: ቆጣሪውን በትክክል ጀምር
+                     startCountdown();
+                     // startCountdown() ቆጣሪውን በሰዓት ያዘምነዋል
+                } else {
+                     // ባታ ከሌለ (0 ከሆነ): ቆጣሪውን አቁም እና የሚጠባበቅ መልዕክት አሳይ
+                     clearInterval(timerInterval); 
+                     countdownSpan.textContent = "ከBackend ዳታ በመጠበቅ ላይ..."; 
+                     // ይህ መልዕክት የሚጠፋው Backend የሰዓት ቆጣሪ ዳታ ሲልክ ነው።
+                }
+            }
+        }
+        
+        function startCountdown() {
+            // ... (Countdown Logic ሳይቀየር ይቀራል)
+             timerDisplay.style.display = 'block';
+             clearInterval(timerInterval); 
+
+             function updateTimer() {
+                const elapsed = Date.now() - spinResetTime; // ከ Backend የሚመጣውን ሰዓት ይጠቀማል
+                const remaining = DAILY_RESET_MS - elapsed;
+
+                if (remaining <= 0) {
+                    clearInterval(timerInterval);
+                    timerDisplay.style.display = 'none';
+                    // ሙከራዎችን እንዲያድስ ለቦቱ ጥያቄ መላክ (Backend ያረጋግጣል)
+                    tg.sendData(JSON.stringify({ action: "request_spin_reset", user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "UNKNOWN" }));
+                    return;
+                }
+
+                const totalSeconds = Math.floor(remaining / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+
+                countdownSpan.textContent = 
+                    `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+
+            timerInterval = setInterval(updateTimer, 1000);
+            updateTimer(); 
+        }
+        
+        function drawWheel() {
+            // ... (drawWheel ሳይቀየር ይቀራል)
+            const totalPrizes = prizes.length;
+            const arcSize = (2 * Math.PI) / totalPrizes;
+            const radius = canvas.width / 2;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            prizes.forEach((prize, i) => {
+                const angle = i * arcSize;
+                ctx.beginPath();
+                ctx.arc(radius, radius, radius, angle, angle + arcSize);
+                ctx.lineTo(radius, radius);
+                ctx.fillStyle = prize.color;
+                ctx.fill();
+                
+                ctx.save();
+                ctx.fillStyle = "white";
+                ctx.font = "bold 12px Arial";
+                ctx.translate(radius, radius);
+                ctx.rotate(angle + arcSize / 2);
+                ctx.textAlign = "right";
+                ctx.fillText(prize.text, radius * 0.8, 5);
+                ctx.restore();
+            });
+        }
+
+        function spinWheel() {
+             if (spinAttempts <= 0 || spinButton.disabled) {
+                tg.showAlert("⚠️ ቀሪ ሙከራ የለዎትም። እባክዎ ይጠብቁ።");
+                return;
+            }
+            
+            spinButton.disabled = true;
+            spinButton.textContent = "በማሽከርከር ላይ...";
+            
+            // ********** 💡 Backend የሚወስደው ክፍል 💡 **********
+            // የዘፈቀደ አሸናፊ መምረጥ በ Backend ላይ እንዲሆን Frontend ጥያቄ ብቻ ይልካል
+             const spinData = {
+                action: "spin_attempt", 
+                user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "UNKNOWN_USER",
+                prize_options: prizes.map(p => p.value) // Backend እንዲመርጥ አማራጮችን መላክ
+            };
+             tg.sendData(JSON.stringify(spinData));
+             
+             // ለተጠቃሚው ማሳያነት እንዲሽከረከር ማድረግ (ውጤቱ ግን በBackend ይወሰናል)
+             const totalRotations = 5; 
+             const randomStopIndex = Math.floor(Math.random() * prizes.length); // የዘፈቀደ ማቆሚያ ለዕይታ
+             const rotationDegree = 360 * totalRotations + (360 - (randomStopIndex * (360 / prizes.length)) - (360 / prizes.length / 2));
+             canvas.style.transform = `rotate(${rotationDegree}deg)`;
+             
+             // Frontend አሁን የ Backend ምላሽን ይጠብቃል
+        }
+        
+        function initializeSpinWheel() {
+            drawWheel();
+            updateSpinDisplay();
+            spinButton.onclick = spinWheel;
+        }
+        
+        function updatePointsDisplay(newPoints) {
+            currentPoints = newPoints;
+            document.getElementById('user-points').textContent = currentPoints;
+        }
+
+        // ********** የማህበራዊ Tasks አመክንዮ **********
+        function updateTaskDisplay(tasksStatus) {
+            socialTasksStatus = tasksStatus; 
+            // ... (updateTaskDisplay ሳይቀየር ይቀራል)
+            for (const taskId in tasksStatus) {
+                const taskElementId = `task-${taskId.toLowerCase().replace('_', '-')}`;
+                const item = document.getElementById(taskElementId);
+                const button = item ? item.querySelector('.task-button') : null;
+                const originalText = button ? (taskId === 'YT_SUB' ? 'ሰብስክራይብ' : 'ተቀላቀል!') : '';
+
+                if (tasksStatus[taskId].completed) {
+                    if (button) {
+                        button.textContent = "ተጠናቋል ✔️";
+                        button.disabled = true;
+                        button.style.backgroundColor = '#6c757d'; 
+                    }
+                } else if (button) {
+                    button.disabled = false;
+                    button.textContent = originalText;
+                    button.style.backgroundColor = '#28a745';
+                }
+            }
+        }
+        
+        function handleTaskClick(taskId, url) {
+            if (socialTasksStatus[taskId] && socialTasksStatus[taskId].completed) {
+                tg.showAlert("ይህን ተግባር አስቀድመው አጠናቀዋል!");
+                return;
+            }
+
+            tg.openLink(url);
+            
+            tg.showConfirm(
+                "ቻናሉን ከተቀላቀሉ/ሰብስክራይብ ካደረጉ በኋላ 'እርግጠኛ ነኝ' የሚለውን ይጫኑ።", 
+                (isConfirmed) => {
+                    if (isConfirmed) {
+                        const button = document.querySelector(`[data-task-id="${taskId}"]`);
+                        const points = parseInt(button.dataset.points);
+                        
+                        // የTask verification ጥያቄ ወደ Backend መላክ
+                        const verificationData = {
+                            action: "verify_social_task",
+                            task_id: taskId,
+                            user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "UNKNOWN_USER" 
+                            // ነጥቡን እዚህ መላክ አያስፈልግም፣ Backend በራሱ ያውቃል
+                        };
+                        
+                        tg.sendData(JSON.stringify(verificationData));
+                        
+                        tg.showAlert("ጥያቄዎ ተልኳል። ትክክለኛነትዎን እስኪያረጋግጥ ይጠብቁ!");
+
+                        if (button) {
+                            button.disabled = true;
+                            button.textContent = "በማረጋገጥ ላይ...";
+                            button.style.backgroundColor = '#ffc107'; 
+                        }
+
+                    } else {
+                        tg.showAlert("እርግጠኛ ነኝ ሳይጫኑ ከወጡ ማረጋገጫው አይሰራም!");
+                    }
+                }
+            );
+        }
+
+        // ********** ዕለታዊ ጉርሻ አያያዝ **********
+        function updateDailyBonusDisplay() {
+            const button = document.getElementById('daily-claim-button');
+            if (!button) return; 
+            
+            const now = Date.now();
+            const timeElapsed = now - dailyClaimTime;
+            const eligible = timeElapsed >= DAILY_RESET_MS;
+            
+            if (eligible) {
+                button.textContent = "ውሰድ! (+500)";
+                button.disabled = false;
+                button.style.backgroundColor = '#17A2B8';
+            } else {
+                button.textContent = "ተወስዷል ✔️";
+                button.disabled = true;
+                button.style.backgroundColor = '#6c757d';
+            }
+        }
+        
+        function handleDailyClaim() {
+            // Frontend በ Backend የተላከውን ሰዓት በመጠቀም መጀመሪያ ያረጋግጣል
+            const now = Date.now();
+            const timeElapsed = now - dailyClaimTime;
+            
+            if (timeElapsed < DAILY_RESET_MS) {
+                 tg.showAlert("⚠️ የዕለታዊ ሽልማትዎን አስቀድመው ወስደዋል። እባክዎ ለሚቀጥለው 24 ሰዓት ይጠብቁ።");
+                 return;
+            }
+            
+            const button = document.getElementById('daily-claim-button');
+            button.disabled = true;
+            button.textContent = "በማስፈፀም ላይ...";
+            button.style.backgroundColor = '#ffc107'; 
+            
+            // የጉርሻ ጥያቄ ወደ Backend መላክ
+            const claimData = {
+                action: "claim_daily_bonus", 
+                user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "UNKNOWN_USER"
+                // ነጥቡን እዚህ መላክ አያስፈልግም፣ Backend በራሱ ያውቃል
+            };
+            
+            tg.sendData(JSON.stringify(claimData));
+        }
+
+        // ************************************************************************
+
+
+        // ********** በ Tasks ገጽ ላይ ያሉ ክፍሎችን መቀያየር (ተስተካክሏል!) **********
+        function showTaskSection(sectionId) {
+            // 💡 አዲስ ማስተካከያ: task-selection-card እና quiz-section ሳይነኩ Spin እና Earning ክፍሎችን ብቻ ደብቅ።
+            document.querySelectorAll('#tasks-page .info-card').forEach(section => {
+                if (section.id !== 'task-selection-card' && section.id !== 'quiz-section') {
+                    section.classList.add('hidden-section');
+                }
+            });
+
+            const selectedSection = document.getElementById(sectionId);
+            if (selectedSection) {
+                selectedSection.classList.remove('hidden-section');
+            }
+            
+            if (sectionId === 'spin-section') {
+                initializeSpinWheel();
+            } else if (sectionId === 'earning-section') {
+                updateTaskDisplay(socialTasksStatus); 
+                updateDailyBonusDisplay();
+            }
+        }
+        // ************************************************************************
+
+
+        // ********** ከቦቱ የሚመጣውን ምላሽ የሚቆጣጠር ዋና ተግባር (ተስተካክሏል!) **********
+        function processBotResponse(data) {
+            
+            // 1. የገጽ ማስጀመርያ ዳታ
+            if (data.action === "initial_data") {
+                // ነጥቡን በ Profile Page ላይ ወዲያውኑ አዘምን
+                updatePointsDisplay(data.points || 0);
+                
+                // 💡 የ Profile ገጽን ስም ወዲያውኑ አዘምን
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    const user = tg.initDataUnsafe.user;
+                    const username = user.username || (user.first_name + " " + (user.last_name || "")).trim();
+                    document.getElementById('display-username').textContent = username;
+                    document.getElementById('profile-initial').textContent = username.charAt(0).toUpperCase();
+                }
+                
+                spinAttempts = data.spin_data.attempts || 0;
+                spinResetTime = data.spin_data.last_spin || 0;
+                
+                updateTaskDisplay(data.tasks_status || {}); 
+                
+                if (data.daily_bonus) {
+                     dailyClaimTime = data.daily_bonus.last_claim || 0; 
+                }
+
+                // TWA የተከፈተው በ Tasks ገጽ ከሆነ፣ Spin እና Daily Bonus ማሳያዎችን አዘምን
+                if (!document.getElementById('tasks-page').classList.contains('hidden-page')) {
+                    updateSpinDisplay();
+                    updateDailyBonusDisplay(); 
+                }
+            }
+            
+            // 2. የማህበራዊ Tasks ማረጋገጫ ምላሽ
+            else if (data.action === "task_verified" && data.task_id) {
+                 const button = document.querySelector(`[data-task-id="${data.task_id}"]`);
+                 const originalText = button.dataset.taskText || (data.task_id === 'YT_SUB' ? 'ሰብስክራይብ' : 'ተቀላቀል!');
+
+                if (data.success) {
+                    updatePointsDisplay(data.new_points || currentPoints); 
+                    
+                    if (socialTasksStatus[data.task_id]) {
+                        socialTasksStatus[data.task_id].completed = true;
+                    }
+                    updateTaskDisplay(socialTasksStatus); 
+                    tg.showAlert(`✅ Task ተጠናቋል! ${data.points_gained || 0} ነጥብ ገብቶልዎታል!`);
+                } else {
+                    tg.showAlert("⚠️ ማረጋገጫው አልተሳካም። ቻናሉን/ግሩፑን በትክክል ተቀላቅለዋል?!");
+                    
+                    if (button) {
+                         button.disabled = false;
+                         button.textContent = originalText;
+                         button.style.backgroundColor = '#28a745';
+                    }
+                }
+            } 
+            
+            // 3. የSpin Wheel ምላሽ (Backend ውጤቱን ሲወስን)
+            else if (data.action === "spin_result") {
+                const wonPrizeValue = data.points_won;
+                const wonPrize = prizes.find(p => p.value === wonPrizeValue);
+                const prizeText = wonPrize ? wonPrize.text : `${wonPrizeValue} ነጥብ`;
+
+                 // 💡 Frontend አሁን ትክክለኛውን ውጤት ለማሳየት ይሽከረከራል
+                 const totalRotations = 5; 
+                 // የBackendን ውጤት የሚያሳየው ኢንዴክስ
+                 const winningIndex = prizes.findIndex(p => p.value === wonPrizeValue);
+                 const rotationDegree = 360 * totalRotations + (360 - (winningIndex * (360 / prizes.length)) - (360 / prizes.length / 2));
+                 canvas.style.transform = `rotate(${rotationDegree}deg)`;
+                 
+                 setTimeout(() => {
+                    updatePointsDisplay(data.new_points || currentPoints); 
+                    spinAttempts = data.attempts_left || 0; 
+                    spinResetTime = data.last_spin || 0; // Backend Timestamp
+                    
+                    // 💡 የተስተካከለ: 0 ነጥብ ሲሆንም መልዕክት ይስጣል
+                    if (wonPrizeValue > 0) {
+                        tg.showAlert(`🎉 እንኳን ደስ አለህ! ${prizeText} አሸንፈዋል!`);
+                    } else {
+                        tg.showAlert(`😔 ${prizeText} አጋጥሞሃል። ለሚቀጥለው ጊዜ ሞክር!`);
+                    }
+                    
+                    spinButton.disabled = false;
+                    // ** አዲስ ማስተካከያ: ሙከራ ከሌለ አዝራሩን ወደ "ይጠብቁ" መመለስ **
+                    if (spinAttempts > 0) { 
+                        spinButton.textContent = "እሽክርክሩ!";
+                    }
+                    
+                    updateSpinDisplay(); // 👈 ይህ አዲሱን attempts እና time ተጠቅሞ ሰዓት ቆጣሪውን ይጀምራል
+                 }, 5500); // ሽክርክሩ እስኪያልቅ ጠብቅ
+                 
+            }
+            
+            // 4. የክፍያ ማረጋገጫ ምላሽ
+            else if (data.action === "payment_confirmed") {
+                if (data.success) {
+                    tg.showAlert(`🎉 ክፍያዎ ተሳክቷል! ${data.amount} ብር ተቀብለናል። መጽሐፍዎ ሊለቀቅ ነው!`);
+                    cart = [];
+                    totalPrice = 0;
+                    updateCartDisplay();
+                    tg.MainButton.setText(`ክፍያ ይፈጽሙ: 0.00 ብር`).hide();
+                } else {
+                    tg.showAlert("❌ ክፍያዎ አልተሳካም። እባክዎ እንደገና ይሞክሩ።");
+                    updateCartDisplay(); 
+                }
+            }
+             // 5. ሙከራዎች ከ24 ሰዓት በኋላ ሲያድሱ
+            else if (data.action === "attempts_refreshed") {
+                // Backend ትክክለኛውን ቁጥር ይልካል
+                spinAttempts = data.attempts || 0; 
+                spinResetTime = data.last_spin || 0;
+                updateSpinDisplay();
+                tg.showAlert("✅ የ Spin ሙከራዎችዎ ታድሰዋል!");
+            }
+            
+            // 6. ዕለታዊ ጉርሻ
+            else if (data.action === "daily_bonus_claimed") {
+                if (data.success) {
+                    updatePointsDisplay(data.new_points || currentPoints);
+                    dailyClaimTime = data.last_claim || Date.now(); 
+                    
+                    tg.showAlert(`🎉 እንኳን ደስ አለህ! የዕለቱ 500 ነጥብ ገብቶልዎታል!`);
+                } else {
+                    tg.showAlert("❌ የዕለታዊ ሽልማት ጥያቄዎ አልተሳካም። (ምናልባት አስቀድመው ወስደዋል?)");
+                }
+                
+                updateDailyBonusDisplay(); // UIን አዘምን
+            }
+            
+            // 7. ሌሎች የነጥብ መጨመር ምላሾች (ለምሳሌ ከQuiz)
+            else if (data.action === "points_added") {
+                updatePointsDisplay(data.new_points || currentPoints); 
+            }
+        }
+
+        // የቦት ምላሽ የሚቀበለው ዋና ተግባር
+        tg.onEvent('web_app_data', (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                processBotResponse(data);
+            } catch (e) {
+                console.error("Error processing web_app_data:", e);
+                tg.showAlert("ከቦቱ መልስ ሲቀበል ችግር ተፈጥሯል! (ኮንሶል ይመልከቱ)");
+                if(spinButton) { 
+                   spinButton.disabled = false; 
+                   spinButton.textContent = "እሽክርክሩ!";
+                }
+                updateCartDisplay(); 
+            }
+        });
+
+
+        function initializeTasksPage() {
+            // 💡 ከ showTaskSection ጋር እንዲመጣጠን ቀየረ
+            // showTaskSection('spin-section'); 
+        }
+        
+        // መተግበሪያው ሲጀምር የሚጠሩ ተግባራት
+        renderCatalog();
+        loadInitialData(); // Backend የጀማሪውን ዳታ እስኪልክ ይጠብቃል
+        
+        // ❌ initializeProfile() እዚህ ተወግዷል ምክንያቱም ዳታው ሲመጣ processBotResponse ውስጥ ተጨምሯል
+        
+        switchPage('shop'); 
+
+    </script>
+</body>
+</html>
