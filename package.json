@@ -7,8 +7,9 @@
     "start": "netlify dev"
   },
   "dependencies": {
-    "axios": "^1.6.8",             // ከቴሌግራም Bot API ጋር ለመነጋገር
-    "serverless-http": "^3.2.0"    // Express Appን ወደ Serverless ለመቀየር (ከተፈለገ)
-    // "pg" ወይም "mongodb" - ለትክክለኛ ዳታቤዝ ሲያስፈልግ
+    "axios": "^1.6.8",
+    "serverless-http": "^3.2.0"
   }
 }
+
+
