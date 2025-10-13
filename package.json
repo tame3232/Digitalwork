@@ -1,15 +1,26 @@
 {
   "name": "telegram-school-library-backend",
   "version": "1.0.0",
-  "description": "Netlify Function to handle Telegram Web App data.",
+  "description": "Netlify Function to handle Telegram Web App data and bot webhook.",
   "main": "netlify/functions/tbot_handler.js",
   "scripts": {
-    "start": "netlify dev"
+    "start": "netlify dev",
+    "deploy": "netlify deploy --prod"
   },
+  "keywords": [
+    "telegram",
+    "bot",
+    "web-app",
+    "netlify",
+    "serverless"
+  ],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "axios": "^1.6.8",
-    "serverless-http": "^3.2.0"
+    "serverless-http": "^3.2.0",
+    "node-fetch": "^3.3.2" 
+    // Telegram Bot APIን ለመጥራት node-fetch ወይም axios መጠቀም ይችላሉ። 
+    // axios ቀድሞውኑ አለዎት፤ node-fetch እንደ አማራጭ ተጨምሯል።
   }
 }
-
-
