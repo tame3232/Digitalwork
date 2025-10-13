@@ -73,7 +73,6 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        // የጥያቄው አካል ባዶ ሊሆን ይችላል? (ይህ የ Syntax Errorን ሊያስከትል ይችላል)
         const update = JSON.parse(event.body);
         
         let userId;
@@ -98,9 +97,7 @@ exports.handler = async (event, context) => {
             
         } else if (message && message.text) {
              // ሐ. የተለመደ የቴሌግራም መልእክት (ለምሳሌ /start ትዕዛዝ)
-             // ይህንን ክፍል ሙሉ ለሙሉ ችላ ማለት ወይም መልስ መስጠት ይችላሉ።
-             // ለጊዜው ችላ እንለዋለን
-             // ነገር ግን ለ /start ምላሽ መመለስ አለበት
+             // ...
         }
         
         // *****************************************************************
@@ -123,11 +120,10 @@ exports.handler = async (event, context) => {
                     text: "እንኳን ደህና መጡ! Mini Appን ለመክፈት ከታች ያለውን አዝራር ይጫኑ።",
                     reply_markup: {
                         inline_keyboard: [
-                            [{ text: "Mini Appን ክፈት", web_app: { url: "YOUR_MINI_APP_URL_HERE" } }]
+                            [{ text: "Mini Appን ክፈት", web_app: { url: "https://schoollibrary1.netlify.app/" } }] // <--- አድራሻው እዚህ ተተክቷል!
                         ]
                     }
                 };
-                // *ማሳሰቢያ: "YOUR_MINI_APP_URL_HERE" በሚለው ቦታ ትክክለኛውን የ Mini App URL (Frontend) ይተኩ*
                 await axios.post(`${TELEGRAM_API}/sendMessage`, startPayload);
                 return { statusCode: 200, body: "Standard start message sent." };
             }
@@ -276,4 +272,4 @@ exports.handler = async (event, context) => {
             body: JSON.stringify({ error: error.message })
         };
     }
-}; // <<<< ይህ ቅንፍ አሁን ተጨምሯል
+}; 
