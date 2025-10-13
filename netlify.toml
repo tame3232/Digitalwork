@@ -1,11 +1,49 @@
 [build]
-functions = "netlify/functions"
-publish = "." # የእርስዎ index.html እዚህ አለ
-command = "npm install" # Node.js ጥቅሎችን ለመጫን
+  # ኔትሊፋይ Functions የሚገኙበትን ማውጫ ይወስናል
+  functions = "netlify/functions"
+  
+  # የፊት-ለፊት (Frontend) ፋይሎች የሚገኙበትን ማውጫ ይወስናል (ይህ index.html ያለበት ነው)
+  publish = "." 
+  
+  # Deployment ከመደረጉ በፊት የሚኬድ ትዕዛዝ (Dependencies ለመጫን)
+  command = "npm install" 
 
-# Webhook Redirect: ቴሌግራም የሚልከው POST ጥያቄ ወደ Functionዎ ይሄዳል
+# ለFunctions የሚሆኑ የአካባቢ ተለዋዋጮችን (Environment Variables) ለማዘጋጀት
+# አስፈላጊ የሆኑ የቦት ቶከኖች እና ሌሎች ሚስጥራዊ መረጃዎች እዚህ መግባት አለባቸው።
+[functions]
+  # ለምሳሌ: Bot Tokenዎን እዚህ ማዘጋጀት ይችላሉ (በኔትሊፋይ UI ውስጥ ማዘጋጀት ይመረጣል)
+  # process.env.BOT_TOKEN በ functionዎ ውስጥ ሊጠራ ይችላል
+  # BOT_TOKEN = "your_telegram_bot_token_here" 
+
+  # የ Functions መቼቶችን ለምሳሌ የ Timeout ጊዜ ለመጨመር
+  # external_node_modules = ["node-fetch", "axios"] # ለምሳሌ የሚጠቀሙባቸው ጥቅሎች
+  # node_bundler = "esbuild"
+
+# ********** ዋናው የቴሌግራም Webhook Redirect **********
+# ቴሌግራም የሚልከው POST ጥያቄ ወደ Functionዎ እንዲሄድ ያደርጋል።
+# "/webhook" የሚለው አድራሻ ቦትዎን (ለምሳሌ በ Telegram Bot API) ሲያዘጋጁ የሚጠቀሙበት መሆን አለበት።
 [[redirects]]
+  # ከየትኛው መንገድ እንደሚመጣ (ይህንን ለቦት API ይስጡት)
   from = "/webhook"
+  
+  # ወደ የትኛው Function እንደሚሄድ
   to = "/.netlify/functions/tbot_handler"
+  
+  # የ HTTP ሁኔታ ኮድ (ቴሌግራም 200 መልስ ይጠብቃል)
   status = 200
+  
+  # ይህ Redirect ሌላውን ሁሉ እንዲሽር ያደርጋል
   force = true
+  
+  # POST Method ብቻ እንዲቀበል መገደብ (አስፈላጊ አይደለም ግን ይመከራል)
+  # conditions = {Method = ["POST"]} 
+
+# ********** የክፍያ ማረጋገጫ Redirect (አማራጭ) **********
+# ለምሳሌ፣ የክፍያ አገልግሎት (እንደ Telebirr) የክፍያ ማረጋገጫ መልሶ የሚልከው አድራሻ ካለዎት
+# [[redirects]]
+#   from = "/payment_callback"
+#   to = "/.netlify/functions/tbot_payment_handler" # ሌላ Function ሊሆን ይችላል
+#   status = 200
+#   force = true
+
+
