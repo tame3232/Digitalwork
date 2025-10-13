@@ -402,6 +402,9 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
         
+        // 💡 አዲስ የተጨመረ: የ Backend Function አድራሻዎ
+        const NETLIFY_FUNCTION_URL = 'https://schoollibrary1.netlify.app/.netlify/functions/tbot_handler';
+        
         // 2. የካታሎግ መረጃ መዋቅር (Data)
         const bookData = [
             // ... bookData ሳይቀየር ይቀራል ...
@@ -426,7 +429,6 @@
         let totalPrice = 0;
         
         // ********** ከ Backend የሚመጡ ተለዋዋጮች (በቦቱ ዳታቤዝ ላይ የተቀመጡ) **********
-        // እነዚህ ተለዋዋጮች Frontend ላይ የሚቀመጡት የ Backend መረጃን ለማሳየት ብቻ ነው።
         let currentPoints = 0; 
         let spinAttempts = 0; 
         let spinResetTime = 0;
@@ -438,19 +440,45 @@
         // ************************************************************************
 
 
-        // ********** የመነሻ ዳታ መጫን (ቦቱ ሲጀምር የሚልከው) **********
+        // ********** የመነሻ ዳታ መጫን (Backendን በቀጥታ የሚጠራ) **********
         function loadInitialData() {
             // Frontend መጀመሩን ለ Backend ማሳወቅ እና ዳታውን መጠየቅ
-            tg.sendData(JSON.stringify({ 
+            const initialDataRequest = {
                 action: "request_initial_data",
+                // ዩዘር ID ከFrontend ወደ Backend መላክ አለበት
                 user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "UNKNOWN"
-            }));
+            };
+
+            // 💡 ወሳኝ ለውጥ: በቀጥታ ወደ Netlify Function URL መላክ
+            fetch(NETLIFY_FUNCTION_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(initialDataRequest)
+            })
+            .then(response => {
+                // ሁኔታውን ቼክ አድርግ
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // መልሱን እንደተቀበለ በቀጥታ processBotResponseን መጥራት
+                processBotResponse(data);
+            })
+            .catch(error => {
+                console.error('Frontend Fetch Error:', error);
+                // "Backend data በመጠበቅ ላይ ነው" የሚለውን መልእክት ለመተካት alert አሳይ
+                tg.showAlert(`❌ ከ Backend ዳታ ሲጠየቅ ችግር ተፈጠረ! ${error.message} (Log ይመልከቱ)`);
+            });
             
             // የፕሌይስሆልደር ዳታ (ለማሳያነት)
             updatePointsDisplay(0);
             updateSpinDisplay(); 
         }
-
+        
         // ********** የጋራ እና የፕሮፋይል ተግባራት **********
         function initializeProfile() {
             if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
@@ -648,9 +676,27 @@
                 }))
             };
             
-            tg.sendData(JSON.stringify(paymentDetails));
-
-            tg.showAlert("የክፍያ ጥያቄ ልኬያለሁ። እባክዎ በቦቱ ውስጥ የሚመጣውን መልዕክት ይጠብቁ።");
+            // 💡 ወሳኝ ለውጥ: በቀጥታ ወደ Netlify Function URL መላክ
+            fetch(NETLIFY_FUNCTION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(paymentDetails)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Backend መልስ ከሰጠ በኋላ MainButtonን መልሰን ማሳየት እንችላለን
+                tg.MainButton.setText(`ክፍያ ይፈጽሙ: ${totalPrice.toFixed(2)} ብር`).enable(); 
+                tg.showAlert("የክፍያ ጥያቄ ልኬያለሁ። እባክዎ በቦቱ ውስጥ የሚመጣውን መልዕክት ይጠብቁ።");
+                
+                // Backendው ምላሹን በ web_app_data በኩል ስለሚመልስ
+                // ይህን ምላሽ በ tg.onEvent('web_app_data') ውስጥ እንይዛለን
+                
+            })
+            .catch(error => {
+                console.error('Payment Fetch Error:', error);
+                tg.showAlert("❌ ክፍያ ሲጠየቅ ችግር ተፈጠረ!");
+                tg.MainButton.setText(`ክፍያ ይፈጽሙ: ${totalPrice.toFixed(2)} ብር`).enable();
+            });
         });
         // *************************************************************
 
@@ -673,7 +719,6 @@
         const countdownSpan = document.getElementById('countdown');
         const timerDisplay = document.getElementById('timer-display');
 
-        // 💡 አሁን የሚገኘው የተስተካከለ function updateSpinDisplay()
         function updateSpinDisplay() {
             attemptsLeftSpan.textContent = spinAttempts;
             
@@ -686,24 +731,18 @@
                 spinButton.disabled = true;
                 spinButton.textContent = "ይጠብቁ...";
 
-                // 💡 አዲስ ማስተካከያ: ሙከራዎች ከሌሉ ሁልጊዜ ሰዓቱን አሳይ (display: block)
                 timerDisplay.style.display = 'block'; 
                 
                 if (spinResetTime > 0) { 
-                     // ትክክለኛ ባታ ካለ: ቆጣሪውን በትክክል ጀምር
                      startCountdown();
-                     // startCountdown() ቆጣሪውን በሰዓት ያዘምነዋል
                 } else {
-                     // ባታ ከሌለ (0 ከሆነ): ቆጣሪውን አቁም እና የሚጠባበቅ መልዕክት አሳይ
                      clearInterval(timerInterval); 
                      countdownSpan.textContent = "ከBackend ዳታ በመጠበቅ ላይ..."; 
-                     // ይህ መልዕክት የሚጠፋው Backend የሰዓት ቆጣሪ ዳታ ሲልክ ነው።
                 }
             }
         }
         
         function startCountdown() {
-            // ... (Countdown Logic ሳይቀየር ይቀራል)
              timerDisplay.style.display = 'block';
              clearInterval(timerInterval); 
 
@@ -714,8 +753,17 @@
                 if (remaining <= 0) {
                     clearInterval(timerInterval);
                     timerDisplay.style.display = 'none';
-                    // ሙከራዎችን እንዲያድስ ለቦቱ ጥያቄ መላክ (Backend ያረጋግጣል)
-                    tg.sendData(JSON.stringify({ action: "request_spin_reset", user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "UNKNOWN" }));
+                    
+                    // 💡 ወሳኝ ለውጥ: በቀጥታ ወደ Netlify Function URL መላክ
+                    fetch(NETLIFY_FUNCTION_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            action: "request_spin_reset", 
+                            user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "UNKNOWN" 
+                        })
+                    }).then(r => r.json()).then(processBotResponse).catch(e => console.error("Reset Fetch Error:", e));
+
                     return;
                 }
 
@@ -768,17 +816,30 @@
             spinButton.textContent = "በማሽከርከር ላይ...";
             
             // ********** 💡 Backend የሚወስደው ክፍል 💡 **********
-            // የዘፈቀደ አሸናፊ መምረጥ በ Backend ላይ እንዲሆን Frontend ጥያቄ ብቻ ይልካል
              const spinData = {
                 action: "spin_attempt", 
                 user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "UNKNOWN_USER",
-                prize_options: prizes.map(p => p.value) // Backend እንዲመርጥ አማራጮችን መላክ
+                prize_options: prizes.map(p => p.value)
             };
-             tg.sendData(JSON.stringify(spinData));
+            
+            // 💡 ወሳኝ ለውጥ: በቀጥታ ወደ Netlify Function URL መላክ
+            fetch(NETLIFY_FUNCTION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(spinData)
+            })
+            .then(r => r.json())
+            .then(processBotResponse)
+            .catch(e => {
+                 console.error("Spin Fetch Error:", e);
+                 spinButton.disabled = false;
+                 spinButton.textContent = "እሽክርክሩ!";
+                 tg.showAlert("❌ ሽክርክሪት ሲጠየቅ ችግር ተፈጠረ!");
+            });
              
              // ለተጠቃሚው ማሳያነት እንዲሽከረከር ማድረግ (ውጤቱ ግን በBackend ይወሰናል)
              const totalRotations = 5; 
-             const randomStopIndex = Math.floor(Math.random() * prizes.length); // የዘፈቀደ ማቆሚያ ለዕይታ
+             const randomStopIndex = Math.floor(Math.random() * prizes.length); 
              const rotationDegree = 360 * totalRotations + (360 - (randomStopIndex * (360 / prizes.length)) - (360 / prizes.length / 2));
              canvas.style.transform = `rotate(${rotationDegree}deg)`;
              
@@ -833,17 +894,25 @@
                 (isConfirmed) => {
                     if (isConfirmed) {
                         const button = document.querySelector(`[data-task-id="${taskId}"]`);
-                        const points = parseInt(button.dataset.points);
                         
-                        // የTask verification ጥያቄ ወደ Backend መላክ
                         const verificationData = {
                             action: "verify_social_task",
                             task_id: taskId,
                             user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "UNKNOWN_USER" 
-                            // ነጥቡን እዚህ መላክ አያስፈልግም፣ Backend በራሱ ያውቃል
                         };
                         
-                        tg.sendData(JSON.stringify(verificationData));
+                        // 💡 ወሳኝ ለውጥ: በቀጥታ ወደ Netlify Function URL መላክ
+                         fetch(NETLIFY_FUNCTION_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(verificationData)
+                        })
+                        .then(r => r.json())
+                        .then(processBotResponse)
+                        .catch(e => {
+                            console.error("Task Verification Fetch Error:", e);
+                            tg.showAlert("❌ Task ሲረጋገጥ ችግር ተፈጠረ!");
+                        });
                         
                         tg.showAlert("ጥያቄዎ ተልኳል። ትክክለኛነትዎን እስኪያረጋግጥ ይጠብቁ!");
 
@@ -899,18 +968,27 @@
             const claimData = {
                 action: "claim_daily_bonus", 
                 user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "UNKNOWN_USER"
-                // ነጥቡን እዚህ መላክ አያስፈልግም፣ Backend በራሱ ያውቃል
             };
             
-            tg.sendData(JSON.stringify(claimData));
+            // 💡 ወሳኝ ለውጥ: በቀጥታ ወደ Netlify Function URL መላክ
+            fetch(NETLIFY_FUNCTION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(claimData)
+            })
+            .then(r => r.json())
+            .then(processBotResponse)
+            .catch(e => {
+                console.error("Daily Claim Fetch Error:", e);
+                tg.showAlert("❌ ጉርሻ ሲጠየቅ ችግር ተፈጠረ!");
+            });
         }
 
         // ************************************************************************
 
 
-        // ********** በ Tasks ገጽ ላይ ያሉ ክፍሎችን መቀያየር (ተስተካክሏል!) **********
+        // ********** በ Tasks ገጽ ላይ ያሉ ክፍሎችን መቀያየር **********
         function showTaskSection(sectionId) {
-            // 💡 አዲስ ማስተካከያ: task-selection-card እና quiz-section ሳይነኩ Spin እና Earning ክፍሎችን ብቻ ደብቅ።
             document.querySelectorAll('#tasks-page .info-card').forEach(section => {
                 if (section.id !== 'task-selection-card' && section.id !== 'quiz-section') {
                     section.classList.add('hidden-section');
@@ -932,15 +1010,13 @@
         // ************************************************************************
 
 
-        // ********** ከቦቱ የሚመጣውን ምላሽ የሚቆጣጠር ዋና ተግባር (ተስተካክሏል!) **********
+        // ********** ከቦቱ የሚመጣውን ምላሽ የሚቆጣጠር ዋና ተግባር **********
         function processBotResponse(data) {
             
             // 1. የገጽ ማስጀመርያ ዳታ
             if (data.action === "initial_data") {
-                // ነጥቡን በ Profile Page ላይ ወዲያውኑ አዘምን
                 updatePointsDisplay(data.points || 0);
                 
-                // 💡 የ Profile ገጽን ስም ወዲያውኑ አዘምን
                 if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
                     const user = tg.initDataUnsafe.user;
                     const username = user.username || (user.first_name + " " + (user.last_name || "")).trim();
@@ -957,11 +1033,10 @@
                      dailyClaimTime = data.daily_bonus.last_claim || 0; 
                 }
 
-                // TWA የተከፈተው በ Tasks ገጽ ከሆነ፣ Spin እና Daily Bonus ማሳያዎችን አዘምን
-                if (!document.getElementById('tasks-page').classList.contains('hidden-page')) {
-                    updateSpinDisplay();
-                    updateDailyBonusDisplay(); 
-                }
+                // TWA ከተከፈተ በኋላ ዳታው ሲመጣ UIን አዘምን
+                updateSpinDisplay();
+                updateDailyBonusDisplay();
+                
             }
             
             // 2. የማህበራዊ Tasks ማረጋገጫ ምላሽ
@@ -994,9 +1069,7 @@
                 const wonPrize = prizes.find(p => p.value === wonPrizeValue);
                 const prizeText = wonPrize ? wonPrize.text : `${wonPrizeValue} ነጥብ`;
 
-                 // 💡 Frontend አሁን ትክክለኛውን ውጤት ለማሳየት ይሽከረከራል
                  const totalRotations = 5; 
-                 // የBackendን ውጤት የሚያሳየው ኢንዴክስ
                  const winningIndex = prizes.findIndex(p => p.value === wonPrizeValue);
                  const rotationDegree = 360 * totalRotations + (360 - (winningIndex * (360 / prizes.length)) - (360 / prizes.length / 2));
                  canvas.style.transform = `rotate(${rotationDegree}deg)`;
@@ -1004,9 +1077,8 @@
                  setTimeout(() => {
                     updatePointsDisplay(data.new_points || currentPoints); 
                     spinAttempts = data.attempts_left || 0; 
-                    spinResetTime = data.last_spin || 0; // Backend Timestamp
+                    spinResetTime = data.last_spin || 0; 
                     
-                    // 💡 የተስተካከለ: 0 ነጥብ ሲሆንም መልዕክት ይስጣል
                     if (wonPrizeValue > 0) {
                         tg.showAlert(`🎉 እንኳን ደስ አለህ! ${prizeText} አሸንፈዋል!`);
                     } else {
@@ -1014,13 +1086,12 @@
                     }
                     
                     spinButton.disabled = false;
-                    // ** አዲስ ማስተካከያ: ሙከራ ከሌለ አዝራሩን ወደ "ይጠብቁ" መመለስ **
                     if (spinAttempts > 0) { 
                         spinButton.textContent = "እሽክርክሩ!";
                     }
                     
-                    updateSpinDisplay(); // 👈 ይህ አዲሱን attempts እና time ተጠቅሞ ሰዓት ቆጣሪውን ይጀምራል
-                 }, 5500); // ሽክርክሩ እስኪያልቅ ጠብቅ
+                    updateSpinDisplay(); 
+                 }, 5500); 
                  
             }
             
@@ -1039,7 +1110,6 @@
             }
              // 5. ሙከራዎች ከ24 ሰዓት በኋላ ሲያድሱ
             else if (data.action === "attempts_refreshed") {
-                // Backend ትክክለኛውን ቁጥር ይልካል
                 spinAttempts = data.attempts || 0; 
                 spinResetTime = data.last_spin || 0;
                 updateSpinDisplay();
@@ -1066,7 +1136,7 @@
             }
         }
 
-        // የቦት ምላሽ የሚቀበለው ዋና ተግባር
+        // የቦት ምላሽ የሚቀበለው ዋና ተግባር (ይህ የሚሰራው Botው web_app_data ሲመልስ ብቻ ነው)
         tg.onEvent('web_app_data', (event) => {
             try {
                 const data = JSON.parse(event.data);
@@ -1084,18 +1154,17 @@
 
 
         function initializeTasksPage() {
-            // 💡 ከ showTaskSection ጋር እንዲመጣጠን ቀየረ
-            // showTaskSection('spin-section'); 
+            // ...
         }
         
         // መተግበሪያው ሲጀምር የሚጠሩ ተግባራት
         renderCatalog();
-        loadInitialData(); // Backend የጀማሪውን ዳታ እስኪልክ ይጠብቃል
-        
-        // ❌ initializeProfile() እዚህ ተወግዷል ምክንያቱም ዳታው ሲመጣ processBotResponse ውስጥ ተጨምሯል
+        loadInitialData(); // 💡 ወሳኝ: አሁን Backendን በቀጥታ ይጠራል
         
         switchPage('shop'); 
 
     </script>
 </body>
 </html>
+
+
