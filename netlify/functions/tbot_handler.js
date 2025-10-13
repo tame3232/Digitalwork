@@ -1,275 +1,157 @@
-// netlify/functions/tbot_handler.js
+// tbot_handler.js (Netlify Function)
+const BOT_TOKEN = process.env.BOT_TOKEN; 
+const API_BASE = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const DAILY_RESET_MS = 24 * 60 * 60 * 1000; // 24 ሰዓት በ ሚሊሰከንድ
 
-const axios = require('axios');
+// ... (extractUserId Function ሳይቀየር ይቀጥላል) ...
+function extractUserId(body, isDirectFetch) {
+    if (isDirectFetch && body && body.user_id) return body.user_id; 
+    if (body.message && body.message.from) return body.message.from.id; 
+    if (body.callback_query && body.callback_query.from) return body.callback_query.from.id;
+    return null;
+}
 
-// የቴሌግራም ቦት ቶከን
-// በ Netlify Environment Variables ውስጥ ማስቀመጥዎን እርግጠኛ ይሁኑ!
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
-
-// *************************************************************************
-// የዳታቤዝ ማስመሰያ (In-Memory Mock Database)
-// **ማስጠንቀቂያ:** Serverless Functions STATE አይይዙም!
-// ይህ ኮድ ለሎጂክ ማሳያ እና ለጊዜያዊ መፈተሻ ብቻ ነው!
-// *************************************************************************
-
-const USER_DB = {}; 
-
-const getOrCreateUser = (userId) => {
-    // ቶከኑን በ Variable ውስጥ ስለሚያስቀምጡ፣ እዚህ ትክክለኛውን ID መመለስ አለበት።
-    if (!USER_DB[userId]) {
-        USER_DB[userId] = {
-            points: 500,
-            balance: 0.00,
-            spin_attempts: 3,
-            last_spin: 0, // Last successful spin timestamp (MS)
-            tasks_status: {
-                TG_CH: { completed: false }, 
-                TG_GP: { completed: false },
-                YT_SUB: { completed: false },
-            },
-            daily_bonus: { last_claim: 0 }
+// ... (userDB እና initializeUser Function ሳይቀየሩ ይቀጥላሉ) ...
+const userDB = {}; 
+function initializeUser(userId) {
+    if (!userDB[userId]) {
+        userDB[userId] = { 
+            points: 1000, 
+            spin_data: { 
+                attempts: 3, 
+                last_spin: 0 // የመጨረሻው ሙከራ ጊዜ (Timestamp)
+            }, 
+            tasks_status: {} 
         };
     }
-    return USER_DB[userId];
-};
+    return userDB[userId];
+}
 
-const DAILY_RESET_MS = 24 * 60 * 60 * 1000;
-const SPIN_PRIZES = [0, 50, 100, 150, 200, 250, 500]; // የሽልማት አማራጮች
-
-// *************************************************************************
-// TWA Frontend መልስ የሚልክ Function
-// *************************************************************************
-
-/**
- * Frontend የላከውን WebApp Data ተጠቅሞ ለሱ ምላሽ ይልካል
- * (ይህም በትክክል ለተጠቃሚው መልእክት መላክ ሲሆን፣ TWA ዳታውን ይይዘዋል)
- */
-const sendTwaResponse = async (userId, responseData) => {
+// ... (sendTelegramMessage Function ሳይቀየር ይቀጥላል) ...
+async function sendTelegramMessage(chatId, text, options = {}) {
+    const url = `${API_BASE}/sendMessage`;
+    const payload = { chat_id: chatId, text: text, parse_mode: 'HTML', ...options };
     try {
-        const payload = {
-            chat_id: userId,
-            text: ".", // ይህ መልእክት ለተጠቃሚው አይታይም፣ TWA ዳታ ለማስተላለፍ ብቻ ነው
-            reply_markup: {
-                web_app_data: {
-                    data: JSON.stringify(responseData)
-                }
-            }
-        };
-        await axios.post(`${TELEGRAM_API}/sendMessage`, payload);
+        await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
     } catch (error) {
-        console.error("Error sending TWA response:", error.response ? error.response.data : error.message);
+        console.error("Error sending Telegram message:", error);
     }
-};
+}
 
-// *************************************************************************
-// ዋናው የNetlify Function Handler
-// *************************************************************************
 
-exports.handler = async (event, context) => {
-    // Webhook POST ጥያቄ ብቻ ይቀበሉ
-    if (event.httpMethod !== "POST") {
-        return { statusCode: 200, body: "OK" }; 
+exports.handler = async (event) => {
+    
+    // ... (HTTP Method, empty body, JSON parsing check ኮዶች ሳይቀየሩ ይቀጥላሉ) ...
+    if (event.httpMethod !== "POST") { return { statusCode: 405, body: "Method Not Allowed" }; }
+    let body;
+    if (!event.body) { console.log("Empty body received."); return { statusCode: 200, body: "OK" }; }
+    try { body = JSON.parse(event.body); } catch (e) { 
+        return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, 
+                 body: JSON.stringify({ action: "error", message: "Invalid JSON format in request body." }) };
     }
-
-    try {
-        const update = JSON.parse(event.body);
-        
-        let userId;
-        let twaData;
-        
-        const message = update.message;
-        const webAppData = message && message.web_app_data;
-        
-        // *****************************************************************
-        // ** ወሳኝ ማስተካከያ: የዳታውን ምንጭ መለየት (Mini App vs Telegram Webhook) **
-        // *****************************************************************
-
-        if (webAppData) {
-            // ሀ. ከቴሌግራም መልእክት ውስጥ የተላከ TWA Data (ለምሳሌ MainButton ሲጫን)
-            userId = message.from.id;
-            twaData = JSON.parse(webAppData.data);
-            
-        } else if (update.action && update.user_id) { 
-            // ለ. ከ TWA Frontend በቀጥታ የመጣ ዳታ (ለምሳሌ ገጽ ሲከፈት - loadInitialData)
-            twaData = update; 
-            userId = twaData.user_id; 
-            
-        } else if (message && message.text) {
-             // ሐ. የተለመደ የቴሌግራም መልእክት (ለምሳሌ /start ትዕዛዝ)
-             // ...
+    
+    // ... (Telegram Webhook Update ኮድ ሳይቀየር ይቀጥላል) ...
+    if (body.update_id) {
+        // ... Webhook handling code (including /start) ...
+        return { statusCode: 200, body: "OK" };
+    } 
+    
+    // 2. Mini App Fetch Request (ከ Frontend የሚመጣ)
+    else if (body.action) {
+        const userId = extractUserId(body, true);
+        if (!userId || userId === "UNKNOWN") {
+             return { statusCode: 200, headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ action: "error", message: "User ID Missing in Fetch Request" }) };
         }
         
-        // *****************************************************************
-        // ** የጎደለው/የተስተካከለ የ User ID ፍተሻ **
-        // *****************************************************************
+        const user = initializeUser(userId);
+        const now = Date.now();
 
-        if (!userId) {
-            
-            // Logውን ለማየት:
-            console.error("Critical Error: User ID not found in either webAppData or direct update. Update object:", update);
-            
-            // የኮድ ማስተካከያ (ለጊዜው):
-            if (update.message && update.message.from && update.message.from.id) {
-                // ለ /start ትዕዛዝ ምላሽ ለመስጠት (ይህም User ID አለው)
-                userId = update.message.from.id;
+        // 💡 አዲስ አመክንዮ: የ Spin ሙከራዎችን በ24 ሰዓት አንዴ ሪሴት ያደርጋል
+        if (user.spin_data.attempts === 0 && (now - user.spin_data.last_spin) >= DAILY_RESET_MS) {
+             user.spin_data.attempts = 3; // ሙከራዎች ይመለሳሉ
+             user.spin_data.last_spin = 0; // ሰዓት ቆጣሪው ይቆማል
+        }
+
+        switch (body.action) {
+            case 'request_initial_data':
                 
-                // Mini Appን የሚከፍት አዝራር ያለው መልእክት መላክ
-                const startPayload = {
-                    chat_id: userId,
-                    text: "እንኳን ደህና መጡ! Mini Appን ለመክፈት ከታች ያለውን አዝራር ይጫኑ።",
-                    reply_markup: {
-                        inline_keyboard: [
-                            [{ text: "Mini Appን ክፈት", web_app: { url: "https://schoollibrary1.netlify.app/" } }] // <--- አድራሻው እዚህ ተተክቷል!
-                        ]
+                let resetTime = 0;
+                if (user.spin_data.attempts === 0) {
+                    // 💡 ማስተካከያ: ሙከራዎች ከሌሉ የመመለሻ ሰዓቱን አስልቶ ይልካል
+                    resetTime = user.spin_data.last_spin + DAILY_RESET_MS;
+                }
+                
+                return {
+                    statusCode: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: "initial_data",
+                        points: user.points,
+                        spin_data: user.spin_data,
+                        reset_time: resetTime // ዜሮ ወይም ወደፊት የሚመጣ ሰዓት (Timestamp)
+                    })
+                };
+            
+            case 'spin_attempt':
+                const PRIZE_OPTIONS = [50, 100, 150, 200, 250, 500, 0]; 
+                
+                if (user.spin_data.attempts > 0) {
+                    user.spin_data.attempts -= 1;
+                    user.spin_data.last_spin = now; // የመጨረሻ ሙከራ ጊዜን ይመዘግባል
+                    
+                    const wonPrize = PRIZE_OPTIONS[Math.floor(Math.random() * PRIZE_OPTIONS.length)];
+                    user.points += wonPrize;
+                    
+                    let newResetTime = 0;
+                    if (user.spin_data.attempts === 0) {
+                        // 💡 ማስተካከያ: ሙከራ ሲያልቅ የመመለሻ ሰዓቱን ይልካል
+                        newResetTime = now + DAILY_RESET_MS;
                     }
-                };
-                await axios.post(`${TELEGRAM_API}/sendMessage`, startPayload);
-                return { statusCode: 200, body: "Standard start message sent." };
-            }
-            
-            return { statusCode: 200, body: "User ID not found or data not recognized." };
-        }
-
-        // ... የተቀረው ኮድ ከዚህ በታች ይቀጥላል ...
-        const action = twaData.action;
-        // **ማሳሰቢያ:** ይህ ኮድ በየጥሪው ዳታቤዝዎን ስለሚያድስ፣ ለሙከራ ብቻ ይጠቅማል!
-        let userData = getOrCreateUser(userId);
-        let responseData = { action: action };
-        
-        const nowMs = Date.now();
-
-        console.log(`Received action: ${action} for user: ${userId}`);
-        
-        // ********************* አመክንዮ አያያዝ *********************
-        
-        if (action === "request_initial_data") {
-            // 1. የጀማሪውን ዳታ ለFrontend መላክ
-            
-            // የ Spin ሙከራዎች ከ24 ሰዓት በኋላ ይደሳሉ?
-            if (userData.last_spin > 0 && nowMs - userData.last_spin >= DAILY_RESET_MS) {
-                userData.spin_attempts = 3;
-                userData.last_spin = 0;
-            }
-            
-            responseData = {
-                action: "initial_data", // Frontend የሚጠብቀው action
-                points: userData.points,
-                spin_data: {
-                    attempts: userData.spin_attempts,
-                    last_spin: userData.last_spin 
-                },
-                tasks_status: userData.tasks_status,
-                daily_bonus: userData.daily_bonus
-            };
-            
-        } else if (action === "spin_attempt") {
-            // 2. Spin Wheel አመክንዮ
-            
-            if (userData.spin_attempts > 0) {
-                const wonPoints = SPIN_PRIZES[Math.floor(Math.random() * SPIN_PRIZES.length)];
-                
-                userData.spin_attempts -= 1;
-                userData.points += wonPoints;
-                
-                if (userData.spin_attempts === 0) {
-                    userData.last_spin = nowMs;
+                    
+                    return {
+                        statusCode: 200,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: "spin_result",
+                            points_won: wonPrize,
+                            new_points: user.points,
+                            attempts_left: user.spin_data.attempts,
+                            reset_time: newResetTime // አዲሱን የመመለሻ ሰዓት
+                        })
+                    };
+                } else {
+                     // ሙከራ ሲያልቅ ቀሪውን ጊዜ አስልቶ ይልካል
+                     const currentResetTime = user.spin_data.last_spin + DAILY_RESET_MS;
+                     
+                     return {
+                        statusCode: 200,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: "error",
+                            message: "No attempts left. Wait for the reset time.",
+                            attempts_left: user.spin_data.attempts,
+                            reset_time: currentResetTime
+                        })
+                    };
                 }
                 
-                responseData = {
-                    action: "spin_result",
-                    points_won: wonPoints,
-                    new_points: userData.points,
-                    attempts_left: userData.spin_attempts,
-                    last_spin: userData.last_spin
+            // ... (default case ይቀጥላል) ...
+            default:
+                 return {
+                    statusCode: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: "error",
+                        message: "Unknown action in Mini App fetch request."
+                    })
                 };
-                
-            } else {
-                await sendTwaResponse(userId, { action: "error", message: "ቀሪ ሙከራ የለዎትም።" });
-                return { statusCode: 200, body: "No attempts left." };
-            }
-            
-        } else if (action === "claim_daily_bonus") {
-            // 3. የዕለታዊ ጉርሻ አመክንዮ
-            
-            if (nowMs - userData.daily_bonus.last_claim >= DAILY_RESET_MS) {
-                const pointsGained = 500;
-                userData.points += pointsGained;
-                userData.daily_bonus.last_claim = nowMs;
-                
-                responseData = {
-                    action: "daily_bonus_claimed",
-                    success: true,
-                    new_points: userData.points,
-                    last_claim: userData.daily_bonus.last_claim
-                };
-            } else {
-                responseData = { action: "daily_bonus_claimed", success: false };
-            }
-
-        } else if (action === "verify_social_task") {
-            // 4. የማህበራዊ Task ማረጋገጫ (Mock)
-            const taskId = twaData.task_id;
-            const task = userData.tasks_status[taskId];
-            let success = false;
-            let pointsGained = 0;
-
-            if (task && !task.completed) {
-                success = true; // ለጊዜው ሁልጊዜ ስኬት ነው
-                
-                if (taskId === "TG_CH") pointsGained = 150;
-                else if (taskId === "TG_GP") pointsGained = 100;
-                else if (taskId === "YT_SUB") pointsGained = 300;
-                
-                if (success) {
-                    userData.points += pointsGained;
-                    task.completed = true;
-                }
-            }
-
-            responseData = {
-                action: "task_verified",
-                task_id: taskId,
-                success: success,
-                points_gained: pointsGained,
-                new_points: userData.points
-            };
-            
-        } else if (action === "initiate_telebirr_payment") {
-            // 5. የክፍያ አመክንዮ (Mock)
-            
-            await sendTwaResponse(userId, { action: "info", message: "የክፍያ ሂደት ተጀምሯል።" });
-            
-            setTimeout(async () => {
-                 userData.balance += parseFloat(twaData.total);
-                 
-                 await sendTwaResponse(userId, {
-                    action: "payment_confirmed",
-                    success: true,
-                    amount: twaData.total
-                 });
-                 
-            }, 5000); 
-
-            // Netlify Function በፍጥነት OK መመለስ አለበት
-            return { statusCode: 200, body: "Payment initiated." };
         }
-        
-        // ******************************************************
-        
-        // የመጨረሻ ምላሽን ወደ TWA Frontend መላክ
-        await sendTwaResponse(userId, responseData);
-
-        return {
-            statusCode: 200,
-            body: "Successfully processed WebApp data."
-        };
-
-    } catch (error) {
-        console.error("Handler Error:", error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: error.message })
-        };
     }
-}; 
+    
+    return { statusCode: 200, body: "Unexpected Request Format" };
+};
