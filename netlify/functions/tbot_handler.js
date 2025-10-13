@@ -73,6 +73,7 @@ exports.handler = async (event, context) => {
     }
 
     try {
+        // የጥያቄው አካል ባዶ ሊሆን ይችላል? (ይህ የ Syntax Errorን ሊያስከትል ይችላል)
         const update = JSON.parse(event.body);
         
         let userId;
@@ -99,10 +100,12 @@ exports.handler = async (event, context) => {
              // ሐ. የተለመደ የቴሌግራም መልእክት (ለምሳሌ /start ትዕዛዝ)
              // ይህንን ክፍል ሙሉ ለሙሉ ችላ ማለት ወይም መልስ መስጠት ይችላሉ።
              // ለጊዜው ችላ እንለዋለን
-             return { statusCode: 200, body: "Standard Telegram message ignored." };
+             // ነገር ግን ለ /start ምላሽ መመለስ አለበት
         }
         
-        // ... tbot_handler.js
+        // *****************************************************************
+        // ** የጎደለው/የተስተካከለ የ User ID ፍተሻ **
+        // *****************************************************************
 
         if (!userId) {
             
@@ -113,13 +116,164 @@ exports.handler = async (event, context) => {
             if (update.message && update.message.from && update.message.from.id) {
                 // ለ /start ትዕዛዝ ምላሽ ለመስጠት (ይህም User ID አለው)
                 userId = update.message.from.id;
-                await axios.post(`${TELEGRAM_API}/sendMessage`, { chat_id: userId, text: "Mini Appን ለመክፈት ከታች ያለውን አዝራር ይጫኑ።" });
+                
+                // Mini Appን የሚከፍት አዝራር ያለው መልእክት መላክ
+                const startPayload = {
+                    chat_id: userId,
+                    text: "እንኳን ደህና መጡ! Mini Appን ለመክፈት ከታች ያለውን አዝራር ይጫኑ።",
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: "Mini Appን ክፈት", web_app: { url: "YOUR_MINI_APP_URL_HERE" } }]
+                        ]
+                    }
+                };
+                // *ማሳሰቢያ: "YOUR_MINI_APP_URL_HERE" በሚለው ቦታ ትክክለኛውን የ Mini App URL (Frontend) ይተኩ*
+                await axios.post(`${TELEGRAM_API}/sendMessage`, startPayload);
                 return { statusCode: 200, body: "Standard start message sent." };
             }
             
             return { statusCode: 200, body: "User ID not found or data not recognized." };
         }
 
-        // ... የተቀረው ኮድ ይቀጥላል
+        // ... የተቀረው ኮድ ከዚህ በታች ይቀጥላል ...
+        const action = twaData.action;
+        // **ማሳሰቢያ:** ይህ ኮድ በየጥሪው ዳታቤዝዎን ስለሚያድስ፣ ለሙከራ ብቻ ይጠቅማል!
+        let userData = getOrCreateUser(userId);
+        let responseData = { action: action };
+        
+        const nowMs = Date.now();
 
+        console.log(`Received action: ${action} for user: ${userId}`);
+        
+        // ********************* አመክንዮ አያያዝ *********************
+        
+        if (action === "request_initial_data") {
+            // 1. የጀማሪውን ዳታ ለFrontend መላክ
+            
+            // የ Spin ሙከራዎች ከ24 ሰዓት በኋላ ይደሳሉ?
+            if (userData.last_spin > 0 && nowMs - userData.last_spin >= DAILY_RESET_MS) {
+                userData.spin_attempts = 3;
+                userData.last_spin = 0;
+            }
+            
+            responseData = {
+                action: "initial_data", // Frontend የሚጠብቀው action
+                points: userData.points,
+                spin_data: {
+                    attempts: userData.spin_attempts,
+                    last_spin: userData.last_spin 
+                },
+                tasks_status: userData.tasks_status,
+                daily_bonus: userData.daily_bonus
+            };
+            
+        } else if (action === "spin_attempt") {
+            // 2. Spin Wheel አመክንዮ
+            
+            if (userData.spin_attempts > 0) {
+                const wonPoints = SPIN_PRIZES[Math.floor(Math.random() * SPIN_PRIZES.length)];
+                
+                userData.spin_attempts -= 1;
+                userData.points += wonPoints;
+                
+                if (userData.spin_attempts === 0) {
+                    userData.last_spin = nowMs;
+                }
+                
+                responseData = {
+                    action: "spin_result",
+                    points_won: wonPoints,
+                    new_points: userData.points,
+                    attempts_left: userData.spin_attempts,
+                    last_spin: userData.last_spin
+                };
+                
+            } else {
+                await sendTwaResponse(userId, { action: "error", message: "ቀሪ ሙከራ የለዎትም።" });
+                return { statusCode: 200, body: "No attempts left." };
+            }
+            
+        } else if (action === "claim_daily_bonus") {
+            // 3. የዕለታዊ ጉርሻ አመክንዮ
+            
+            if (nowMs - userData.daily_bonus.last_claim >= DAILY_RESET_MS) {
+                const pointsGained = 500;
+                userData.points += pointsGained;
+                userData.daily_bonus.last_claim = nowMs;
+                
+                responseData = {
+                    action: "daily_bonus_claimed",
+                    success: true,
+                    new_points: userData.points,
+                    last_claim: userData.daily_bonus.last_claim
+                };
+            } else {
+                responseData = { action: "daily_bonus_claimed", success: false };
+            }
 
+        } else if (action === "verify_social_task") {
+            // 4. የማህበራዊ Task ማረጋገጫ (Mock)
+            const taskId = twaData.task_id;
+            const task = userData.tasks_status[taskId];
+            let success = false;
+            let pointsGained = 0;
+
+            if (task && !task.completed) {
+                success = true; // ለጊዜው ሁልጊዜ ስኬት ነው
+                
+                if (taskId === "TG_CH") pointsGained = 150;
+                else if (taskId === "TG_GP") pointsGained = 100;
+                else if (taskId === "YT_SUB") pointsGained = 300;
+                
+                if (success) {
+                    userData.points += pointsGained;
+                    task.completed = true;
+                }
+            }
+
+            responseData = {
+                action: "task_verified",
+                task_id: taskId,
+                success: success,
+                points_gained: pointsGained,
+                new_points: userData.points
+            };
+            
+        } else if (action === "initiate_telebirr_payment") {
+            // 5. የክፍያ አመክንዮ (Mock)
+            
+            await sendTwaResponse(userId, { action: "info", message: "የክፍያ ሂደት ተጀምሯል።" });
+            
+            setTimeout(async () => {
+                 userData.balance += parseFloat(twaData.total);
+                 
+                 await sendTwaResponse(userId, {
+                    action: "payment_confirmed",
+                    success: true,
+                    amount: twaData.total
+                 });
+                 
+            }, 5000); 
+
+            // Netlify Function በፍጥነት OK መመለስ አለበት
+            return { statusCode: 200, body: "Payment initiated." };
+        }
+        
+        // ******************************************************
+        
+        // የመጨረሻ ምላሽን ወደ TWA Frontend መላክ
+        await sendTwaResponse(userId, responseData);
+
+        return {
+            statusCode: 200,
+            body: "Successfully processed WebApp data."
+        };
+
+    } catch (error) {
+        console.error("Handler Error:", error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: error.message })
+        };
+    }
+}; // <<<< ይህ ቅንፍ አሁን ተጨምሯል
