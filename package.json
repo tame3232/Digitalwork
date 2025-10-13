@@ -20,7 +20,5 @@
     "axios": "^1.6.8",
     "serverless-http": "^3.2.0",
     "node-fetch": "^3.3.2" 
-    // Telegram Bot APIን ለመጥራት node-fetch ወይም axios መጠቀም ይችላሉ። 
-    // axios ቀድሞውኑ አለዎት፤ node-fetch እንደ አማራጭ ተጨምሯል።
   }
 }
