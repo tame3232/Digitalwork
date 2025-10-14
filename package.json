@@ -1,24 +1,24 @@
 {
   "name": "telegram-school-library-backend",
   "version": "1.0.0",
-  "description": "Netlify Function to handle Telegram Web App data and bot webhook.",
-  "main": "netlify/functions/tbot_handler.js",
+  "description": "Persistent Web Service to handle Telegram Web App data and bot webhook on Render.",
+  "main": "tbot.js",
   "scripts": {
-    "start": "netlify dev",
-    "deploy": "netlify deploy --prod"
+    "start": "node tbot.js"
   },
   "keywords": [
     "telegram",
     "bot",
     "web-app",
-    "netlify",
-    "serverless"
+    "render",
+    "web-service"
   ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.6.8",
-    "serverless-http": "^3.2.0",
+    "express": "^4.19.2",      
+    "body-parser": "^1.20.2",   
     "node-fetch": "^3.3.2" 
   }
 }
