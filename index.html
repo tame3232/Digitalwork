@@ -1,10 +1,3 @@
-ባስቸኳይ ማስተካከል ያለብዎትን ነገሮች ሁሉ አስተካክዬ ኮዱን ከታች አስቀምጫለሁ።
-ዋናው ትኩረት የተደረገው፡-
- * "ከBackend data በመጠበቅ ላይ..." የሚለውን ጽሑፍ ለማስቀረት እና ገጹ ሲከፈት ወዲያውኑ የ Spin እና Quiz ሙከራዎች ሙሉ (5/5) እንዲሆኑ ማድረግ።
- * የ Tasks ገጽ ሲከፈት ወዲያውኑ የዕለታዊ ሰዓት ቆጣሪው (Main Timer) በትክክል እንዲጀምር ማድረግ (ከቦታ መያዣ እሴቶች በመነሳት)።
- * የተሻሻሉትን የጃቫስክሪፕት ተለዋዋጮች በተመለከተ ያሉትን አስተያየቶች በግልጽ ማስቀመጥ።
-🛠️ የተስተካከለው index.html ኮድ
-ከዚህ በታች ሙሉ በሙሉ የተስተካከለው የ index.html ኮድ ቀርቧል።
 <!DOCTYPE html>
 <html lang="am">
 <head>
@@ -385,7 +378,7 @@
                 <button class="green-button" onclick="alert('ገንዘብ ማውጣት ተግባር በቦቱ መደገፍ አለበት።');">Withdraw</button>
             </div>
             <div class="info-item">
-                <span class="item-label"><i class="fas fa-star"></i> ሽልማት</span>
+                <span class="item-label"><i class="fas fa-star"></i>point</span>
                 <span class="item-value" id="user-points">0</span> </div>
              <div class="info-item">
                 <span class="item-label"><i class="fas fa-ticket-alt"></i> Tickets</span>
@@ -400,7 +393,7 @@
             </div>
             
             <div class="info-item">
-                <span class="item-label"><i class="fas fa-sync-alt"></i> ነጥብ ወደ ብር ቀይር</span>
+                <span class="item-label"><i class="fas fa-sync-alt"></i> ነጥብ ወደ coin ቀይር</span>
                 <button class="green-button" onclick="alert('በቅርብ ቀን ይጠብቁ...');" style="background-color: #f0ad4e;">
                     Exchange
                 </button> 
@@ -452,7 +445,7 @@
                 <div id="pointer"></div>
             </div>
             <button id="spin-button" class="green-button" style="padding: 15px 30px; font-size: 1.2em; width: 80%;">
-                እሽክርክሩ!
+                አሽክርክሩ!
             </button>
             <p style="margin-top: 15px;">ቀሪ ሙከራዎች: <span id="attempts-left">...</span>/5</p>
             <p id="timer-display" style="color: #dc3545; font-weight: bold; margin-top: 10px; display: none;">
@@ -470,13 +463,13 @@
                     <h4>ቴሌግራም Community</h4>
                     <p>ቻናል በመቀላቀል ነጥብ ያግኙ</p>
                 </div>
-                <button class="action-button">ተቀላቀል</button>
+                <button class="action-button">join</button>
             </div>
              <ul id="social-tasks-list" class="task-list hidden-section" style="padding: 10px 0;">
                  <div class="info-item" id="task-tg-ch">
                     <span class="item-label">
                         <i class="fab fa-telegram-plane" style="color: #0088cc; margin-right: 5px;"></i> 
-                        **ቴሌግራም ቻናል ተቀላቀል**
+                        ቴሌግራም ቻናል ተቀላቀል
                     </span>
                     <span class="item-value">+150 ነጥብ</span>
                     <button class="green-button task-button" 
@@ -491,7 +484,7 @@
                 <div class="info-item" id="task-tg-gp">
                     <span class="item-label">
                         <i class="fab fa-telegram-plane" style="color: #00a4e4; margin-right: 5px;"></i> 
-                        **ቴሌግራም ግሩፕ ተቀላቀል**
+                        ቴሌግራም ግሩፕ ተቀላቀል
                     </span>
                     <span class="item-value">+100 ነጥብ</span>
                     <button class="green-button task-button" 
@@ -506,7 +499,7 @@
                 <div class="info-item" id="task-yt-sub" style="border-bottom: none;">
                     <span class="item-label">
                         <i class="fab fa-youtube" style="color: #ff0000; margin-right: 5px;"></i> 
-                        **ዩቲዩብ ሰብስክራይብ**
+                        ዩቲዩብ ሰብስክራይብ
                     </span>
                     <span class="item-value">+300 ነጥብ</span>
                     <button class="green-button task-button" 
@@ -995,7 +988,7 @@
                 removeButton.style.border = 'none';
                 removeButton.style.color = 'white';
                 removeButton.style.padding = '5px 10px';
-                removeButton.style.borderRadius = '8px';
+                removeButton.style.borderRadius = '15px';
                 removeButton.style.marginLeft = '10px';
                 removeButton.onclick = () => decreaseQuantity(item.id);
                 li.appendChild(removeButton);
@@ -1264,7 +1257,7 @@
             .catch(e => {
                  console.error("Spin Fetch Error:", e);
                  spinButton.disabled = false;
-                 spinButton.textContent = "እሽክርክሩ!";
+                 spinButton.textContent = "spin";
                  tg.showAlert("❌ ሽክርክሪት ሲጠየቅ ችግር ተፈጠረ!");
                  // ችግር ሲፈጠር ጎማው ወደ ዜሮ እንዲመለስ
                  canvas.style.transform = `rotate(0deg)`; 
@@ -1307,7 +1300,7 @@
                 const taskElementId = `task-${taskId.toLowerCase().replace('_', '-')}`;
                 const item = document.getElementById(taskElementId);
                 const button = item ? item.querySelector('.task-button') : null;
-                const originalText = button ? (taskId === 'YT_SUB' ? 'ሰብስክራይብ' : 'ተቀላቀል!') : '';
+                const originalText = button ? (taskId === 'YT_SUB' ? 'subscribe' : 'join') : '';
 
                 if (tasksStatus[taskId].completed) {
                     if (button) {
@@ -1409,7 +1402,7 @@
             .then(processBotResponse)
             .catch(e => {
                 console.error("Daily Claim Fetch Error:", e);
-                tg.showAlert("❌ ጉርሻ ሲጠየቅ ችግር ተፈጠረ!");
+                tg.showAlert("ትንሽ ይጠብቁ");
                 couponButton.disabled = false;
                 couponButton.textContent = "Coupon";
                 couponButton.style.backgroundColor = '#6f42c1'; 
@@ -1516,7 +1509,7 @@
             // 2. የማህበራዊ Tasks ማረጋገጫ ምላሽ
             else if (data.action === "task_verified" && data.task_id) {
                  const button = document.querySelector(`[data-task-id="${data.task_id}"]`);
-                 const originalText = button.dataset.taskText || (data.task_id === 'YT_SUB' ? 'ሰብስክራይብ' : 'ተቀላቀል!');
+                 const originalText = button.dataset.taskText || (data.task_id === 'YT_SUB' ? 'subscribe' : 'join');
 
                 if (data.success) {
                     updatePointsDisplay(data.new_points || currentPoints); 
@@ -1661,7 +1654,7 @@
                 tg.showAlert("ከቦቱ መልስ ሲቀበል ችግር ተፈጥሯል! (ኮንሶል ይመልከቱ)");
                 if(spinButton) { 
                    spinButton.disabled = false; 
-                   spinButton.textContent = "እሽክርክሩ!";
+                   spinButton.textContent = "spin";
                 }
                 updateCartDisplay(); 
             }
