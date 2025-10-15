@@ -1,4 +1,4 @@
-
+  {
   "name": "telegram-school-library-backend",
   "version": "1.0.0",
   "description": "Persistent Web Service to handle Telegram Web App data and bot webhook on Render.",
@@ -19,9 +19,12 @@
     "axios": "^1.6.8",
     "express": "^4.19.2",      
     "body-parser": "^1.20.2",   
-    "node-fetch": "^3.3.2",
-    "cors": "^2.8.5"         
+    "node-fetch": "^3.3.2" 
+  }
+}
+
   
+
 
 
 
